@@ -11,12 +11,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.vcore.rewrite.sdk.vspace
 import com.vspace.ui.theme.VspaceTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val haha = vspace.logger
+        haha.log("hi alex")
+
+
         setContent {
             VspaceTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->

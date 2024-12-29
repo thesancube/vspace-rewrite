@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.dragger.hilt)
+    alias(libs.plugins.kotlin.ksp)
 }
-
-// this source is on the way to work so please don't use it for now
 
 
 android {
@@ -43,7 +43,6 @@ android {
     buildFeatures {
         aidl = true
         prefab = true
-//        compose = true
         viewBinding = true
     }
     compileOptions {
@@ -66,7 +65,9 @@ dependencies {
     implementation ("com.bytedance.android:shadowhook:1.1.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
 
-
+    // dragger hilt
+    implementation(libs.dragger.hilt)
+    ksp(libs.dragger.compiler)
 
     // unit tests impl
     testImplementation(libs.junit)

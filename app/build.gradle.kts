@@ -50,6 +50,9 @@ android {
 
 dependencies {
 
+    implementation(project(":coreSdk"))
+
+
     // androidx common
     implementation(libs.bundles.androidx.common)
     // jetpack compose
