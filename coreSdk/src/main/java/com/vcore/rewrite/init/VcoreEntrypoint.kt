@@ -1,5 +1,6 @@
 package com.vcore.rewrite.init
 
+import android.content.Context
 import com.vcore.rewrite.sdk.Logger
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -15,6 +16,8 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface VcoreEntrypoint {
     fun provideLogger(): Logger
+
+
 
 
 }

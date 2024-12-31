@@ -6,5 +6,5 @@ package com.vcore.rewrite.sdk
  * Logger
  */
 interface Logger {
-    fun log(message: String)
+    fun log()
 }

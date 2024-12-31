@@ -8,6 +8,7 @@ import com.vcore.rewrite.sdk.vspace
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 
 /**
@@ -24,6 +25,6 @@ object VcoreModule {
 
     // saves the context for later use in other modules or components
     @Provides
-    fun provideAppContext(): Context = vspace.getContext()
+    fun provideAppContext( @ApplicationContext context: Context ): Context = vspace.getContext()
 
 }

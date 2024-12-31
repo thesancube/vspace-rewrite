@@ -41,7 +41,7 @@ android {
         }
     }
     buildFeatures {
-        aidl = true
+        aidl = false
         prefab = true
         viewBinding = true
     }
