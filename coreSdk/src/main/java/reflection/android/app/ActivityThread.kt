@@ -39,7 +39,13 @@ class ActivityThread {
         val getSystemContext: Reflector.MethodWrapper<Any> = REF.method("getSystemContext")
         val getLaunchingActivity: Reflector.MethodWrapper<Any> = REF.method("getLaunchingActivity", IBinder::class.java)
         val performNewIntents: Reflector.MethodWrapper<Void> = REF.method("performNewIntents", IBinder::class.java, List::class.java)
-        val installProvider: Reflector.MethodWrapper<Void> = REF.method("installProvider", Context::class.java, sandbox.android.app.ContentProviderHolder::class.java, ProviderInfo::class.java, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+        val installProvider: Reflector.MethodWrapper<Void> = REF.method("installProvider",
+            Context::class.java,
+            sandbox.android.app.ContentProviderHolder::class.java,
+            ProviderInfo::class.java,
+            Boolean::class.javaPrimitiveType!!,
+            Boolean::class.javaPrimitiveType!!,
+            Boolean::class.javaPrimitiveType!!)
     }
 
     class CreateServiceData {

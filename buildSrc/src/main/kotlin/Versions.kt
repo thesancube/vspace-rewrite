@@ -9,7 +9,4 @@ object Versions {
     const val cmakeVersion = "3.22.1"
     var cpuArch = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
-
-
-
 }
