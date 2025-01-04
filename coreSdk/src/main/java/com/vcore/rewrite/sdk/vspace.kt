@@ -3,6 +3,7 @@ package com.vcore.rewrite.sdk
 import android.content.Context
 import com.vcore.rewrite.init.VcoreEntrypoint
 import dagger.hilt.EntryPoints
+import reflection.android.os.Build
 
 /**
  * @author alex
@@ -27,6 +28,8 @@ object vspace {
         return mainAppContext
     }
 
+
+    
 
 
 }

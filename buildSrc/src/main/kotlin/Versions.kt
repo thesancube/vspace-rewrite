@@ -1,6 +1,6 @@
 object Versions {
 
-    const val minimumSdk = 24
+    const val minimumSdk = 28
     const val maximumSdk = 35
     const val compilesdk = 35
     const val versionCode = 27  // this value increases when app gets test passed
