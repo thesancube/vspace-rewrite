@@ -7,6 +7,7 @@ package reflection
  * Reflector
  */
 
+import android.os.Build
 import android.util.Log
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import java.lang.reflect.*
@@ -48,9 +49,12 @@ class Reflector private constructor(private val clazz: Class<*>) {
                 try {
                     return currentClass.getDeclaredMethod(name, *parameterTypes).apply { isAccessible = true }
                 } catch (e: NoSuchMethodException) {
-                    try {
-                        return HiddenApiBypass.getDeclaredMethod(currentClass, name, *parameterTypes).apply { isAccessible = true }
-                    } catch (ignored: Exception) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        try {
+                            return HiddenApiBypass.getDeclaredMethod(currentClass, name, *parameterTypes).apply { isAccessible = true }
+                        } catch (ignored: Exception) {
+                            ignored.printStackTrace()
+                        }
                     }
                 }
                 currentClass = currentClass.superclass
@@ -83,11 +87,13 @@ class Reflector private constructor(private val clazz: Class<*>) {
         }
 
         private fun findInstanceField(clazz: Class<*>, name: String): Field {
-            val fields = HiddenApiBypass.getInstanceFields(clazz)
-            for (field in fields) {
-                if (field is Field && field.name == name) {
-                    field.isAccessible = true
-                    return field
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val fields = HiddenApiBypass.getInstanceFields(clazz)
+                for (field in fields) {
+                    if (field is Field && field.name == name) {
+                        field.isAccessible = true
+                        return field
+                    }
                 }
             }
             throw NoSuchFieldException("Field '$name' not found in class '${clazz.name}'")
@@ -95,11 +101,13 @@ class Reflector private constructor(private val clazz: Class<*>) {
 
 
         private fun findStaticField(clazz: Class<*>, name: String): Field {
-            val fields = HiddenApiBypass.getStaticFields(clazz)
-            for (field in fields) {
-                if (field is Field && field.name == name) {
-                    field.isAccessible = true
-                    return field
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val fields = HiddenApiBypass.getStaticFields(clazz)
+                for (field in fields) {
+                    if (field is Field && field.name == name) {
+                        field.isAccessible = true
+                        return field
+                    }
                 }
             }
             throw NoSuchFieldException("Static field '$name' not found in class '${clazz.name}'")
@@ -118,7 +126,11 @@ class Reflector private constructor(private val clazz: Class<*>) {
             clazz.getDeclaredConstructor(*parameterTypes).apply { isAccessible = true } as Constructor<T>
         } catch (e: NoSuchMethodException) {
             try {
-                HiddenApiBypass.getDeclaredConstructor(clazz, *parameterTypes).apply { isAccessible = true } as Constructor<T>
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    HiddenApiBypass.getDeclaredConstructor(clazz, *parameterTypes).apply { isAccessible = true } as Constructor<T>
+                } else {
+                    null
+                }
             } catch (ignored: Exception) {
                 null
             }
