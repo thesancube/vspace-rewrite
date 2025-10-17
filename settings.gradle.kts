@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        maven { url = uri("https://jitpack.io") }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -23,3 +24,4 @@ dependencyResolutionManagement {
 rootProject.name = "vspace-rewrite"
 include(":app")
 include(":coreSdk")
+include(":freereflection")
