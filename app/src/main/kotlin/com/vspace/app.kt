@@ -1,7 +1,6 @@
 package com.vspace
 
 import android.app.Application
-import com.vcore.rewrite.sdk.vspace
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -13,6 +12,6 @@ import dagger.hilt.android.HiltAndroidApp
 class app : Application() {
     override fun onCreate() {
         super.onCreate()
-        vspace.initialize(this)
+
     }
 }

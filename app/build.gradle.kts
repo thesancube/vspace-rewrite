@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.dragger.hilt)
     alias(libs.plugins.kotlin.ksp)
 }
 
@@ -60,16 +59,6 @@ dependencies {
 
     // compose bom
     implementation(platform(libs.androidx.compose.bom))
-    
-    // dragger hilt
-    implementation(libs.dragger.hilt)
-    ksp(libs.dragger.compiler)
-
-
-
-
-
-
 
 
 

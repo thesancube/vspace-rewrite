@@ -396,7 +396,6 @@
     <uses-permission
         android:name="android.permission.INTERACT_ACROSS_USERS"
         tools:ignore="ProtectedPermissions" />
-
     <application>
 
     </application>

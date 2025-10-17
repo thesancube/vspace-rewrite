@@ -1,8 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.dragger.hilt)
-    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 
@@ -64,11 +63,7 @@ dependencies {
     implementation(libs.bundles.androidx.common)
     implementation ("com.bytedance.android:shadowhook:1.1.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
-
-    // dragger hilt
-    implementation(libs.dragger.hilt)
-    ksp(libs.dragger.compiler)
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
 
     // unit tests impl
     testImplementation(libs.junit)
