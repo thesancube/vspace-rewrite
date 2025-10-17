@@ -57,6 +57,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import me.weishu.reflection.Reflection;
+import org.lsposed.hiddenapibypass.HiddenApiBypass;
 import mirror.android.app.ActivityThread;
 
 /**
@@ -184,7 +185,21 @@ public final class VirtualCore {
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 throw new IllegalStateException("VirtualCore.startup() must called in main thread.");
             }
-            Reflection.unseal(context);
+            // Try HiddenApiBypass first (more reliable on Android 9+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    HiddenApiBypass.addHiddenApiExemptions("L");
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+            // Also try freereflection as secondary
+            try {
+                Reflection.unseal(context);
+            } catch (Throwable e) {
+                // It's okay if this fails, HiddenApiBypass should work
+                e.printStackTrace();
+            }
 
             VASettings.STUB_CP_AUTHORITY = context.getPackageName() + "." + VASettings.STUB_DEF_AUTHORITY;
             ServiceManagerNative.SERVICE_CP_AUTH = context.getPackageName() + "." + ServiceManagerNative.SERVICE_DEF_AUTH;

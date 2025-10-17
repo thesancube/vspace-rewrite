@@ -39,6 +39,22 @@ public class BuildCompat {
         return isAndroidLevel(31);
     }
 
+    public static boolean isT() {
+        return isAndroidLevel(33); // Android 13 (Tiramisu)
+    }
+
+    public static boolean isU() {
+        return isAndroidLevel(34); // Android 14 (Upside Down Cake)
+    }
+
+    public static boolean isV() {
+        return isAndroidLevel(35); // Android 15 (Vanilla Ice Cream)
+    }
+
+    public static boolean isW() {
+        return isAndroidLevel(36); // Android 16+ (future proofing)
+    }
+
     private static boolean isAndroidLevelPreview(int level) {
         return (Build.VERSION.SDK_INT == level && getPreviewSDKInt() > 0)
                 || Build.VERSION.SDK_INT > level;

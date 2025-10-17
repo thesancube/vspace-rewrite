@@ -53,7 +53,9 @@ public class VActivityManager {
                 (!mRemote.asBinder().pingBinder() && !VirtualCore.get().isVAppProcess())) {
             synchronized (VActivityManager.class) {
                 final Object remote = getRemoteInterface();
-                mRemote = LocalProxyUtils.genProxy(IActivityManager.class, remote);
+                if (remote != null) {
+                    mRemote = LocalProxyUtils.genProxy(IActivityManager.class, remote);
+                }
             }
         }
         return mRemote;
@@ -472,9 +474,17 @@ public class VActivityManager {
 
     public boolean isVAServiceToken(IBinder token) {
         try {
-            return getService().isVAServiceToken(token);
+            IActivityManager service = getService();
+            if (service == null) {
+                // Service not ready yet, return false to use default behavior
+                return false;
+            }
+            return service.isVAServiceToken(token);
         } catch (RemoteException e) {
             return VirtualRuntime.crash(e);
+        } catch (NullPointerException e) {
+            // Service not ready, return false
+            return false;
         }
     }
 

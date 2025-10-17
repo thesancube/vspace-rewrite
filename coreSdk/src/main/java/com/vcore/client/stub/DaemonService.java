@@ -1,6 +1,8 @@
 package com.vcore.client.stub;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -20,6 +22,7 @@ import java.io.File;
 public class DaemonService extends Service {
 
     private static final int NOTIFY_ID = 1001;
+    private static final String CHANNEL_ID = "vcore_daemon_channel";
 
 	static boolean showNotification = true;
 
@@ -47,14 +50,43 @@ public class DaemonService extends Service {
 		return null;
 	}
 
+	private void createNotificationChannel() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			NotificationChannel channel = new NotificationChannel(
+				CHANNEL_ID,
+				"VirtualCore Daemon",
+				NotificationManager.IMPORTANCE_MIN
+			);
+			channel.setDescription("Keeps virtual apps running");
+			channel.setShowBadge(false);
+			NotificationManager manager = getSystemService(NotificationManager.class);
+			if (manager != null) {
+				manager.createNotificationChannel(channel);
+			}
+		}
+	}
+
+	private Notification createNotification() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			return new Notification.Builder(this, CHANNEL_ID)
+				.setContentTitle("VirtualCore")
+				.setContentText("Running")
+				.setSmallIcon(android.R.drawable.ic_dialog_info)
+				.build();
+		} else {
+			return new Notification();
+		}
+	}
+
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		if (!showNotification) {
 			return;
 		}
+		createNotificationChannel();
         startService(new Intent(this, InnerService.class));
-        startForeground(NOTIFY_ID, new Notification());
+        startForeground(NOTIFY_ID, createNotification());
 	}
 
 	@Override
@@ -64,11 +96,28 @@ public class DaemonService extends Service {
 
 	public static final class InnerService extends Service {
 
+		private Notification createNotification() {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				return new Notification.Builder(this, CHANNEL_ID)
+					.setContentTitle("VirtualCore")
+					.setContentText("Running")
+					.setSmallIcon(android.R.drawable.ic_dialog_info)
+					.build();
+			} else {
+				return new Notification();
+			}
+		}
+
         @Override
         public int onStartCommand(Intent intent, int flags, int startId) {
-            startForeground(NOTIFY_ID, new Notification());
-            stopForeground(true);
-            stopSelf();
+            try {
+                startForeground(NOTIFY_ID, createNotification());
+                stopForeground(true);
+                stopSelf();
+            } catch (Exception e) {
+                // Ignore errors during early initialization
+                e.printStackTrace();
+            }
             return super.onStartCommand(intent, flags, startId);
         }
 
