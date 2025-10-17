@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -40,9 +41,10 @@ android {
         }
     }
     buildFeatures {
-        aidl = false
+        aidl = true
         prefab = true
         viewBinding = true
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -60,10 +62,13 @@ android {
 }
 
 dependencies {
+    implementation(project(":freereflection"))
     implementation(libs.bundles.androidx.common)
     implementation ("com.bytedance.android:shadowhook:1.1.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+
+
 
     // unit tests impl
     testImplementation(libs.junit)

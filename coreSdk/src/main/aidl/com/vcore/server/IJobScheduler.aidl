@@ -1,0 +1,16 @@
+package com.vcore.server;
+
+import android.app.job.JobInfo;
+import android.app.job.JobWorkItem;
+
+/**
+ * IPC interface that supports the app-facing {@link #JobScheduler} api.
+ */
+interface IJobScheduler {
+    int schedule(in JobInfo job);
+    void cancel(int jobId);
+    void cancelAll();
+    List<JobInfo> getAllPendingJobs();
+    int enqueue(in JobInfo job, in JobWorkItem work);
+    JobInfo getPendingJob(int i);
+}
