@@ -203,6 +203,21 @@ public class VEnvironment {
                 VirtualCore.get().getHostPkg(), userId, packageName, userId);
         File file = new File(base);
         VLog.d(TAG, "Creating virtual private storage directory for package: " + base);
+        
+        // Ensure the entire directory structure is created
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+            // Set permissions for parent directories
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    FileUtils.chmod(parentDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                }
+            } catch (Exception e) {
+                VLog.w(TAG, "Failed to set permissions for parent directory: " + parentDir.getAbsolutePath(), e);
+            }
+        }
+        
         return ensureCreated(file);
     }
 

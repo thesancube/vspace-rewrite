@@ -532,12 +532,17 @@ public final class VClientImpl extends IVClient.Stub {
         
         NativeEngine.whitelist(privatePath, true);
         
+        // ALWAYS set up private storage redirection regardless of virtual storage enablement
+        // This is critical for apps to access their private sdcard directories
+        setupPrivateStorageRedirection(info, userId, privatePath);
+        
         VirtualStorageManager vsManager = VirtualStorageManager.get();
         boolean enable = vsManager.isVirtualStorageEnable(info.packageName, userId);
         // Android 11, force enable storage redirect.
         if (!enable && !(Build.VERSION.SDK_INT >= 30)) {
             // There are lots of situation to deal, I am tired, disable it now.
             // such as: FileProvider.
+            VLog.d(TAG, "Virtual storage disabled, but private storage redirection is still active");
             return;
         }
 
@@ -600,15 +605,38 @@ public final class VClientImpl extends IVClient.Stub {
                 NativeEngine.whitelist(whitePath, true);
             }
 
-            // Android 11 -> see https://developer.android.com/training/data-storage#scoped-storage
-            // 安卓11 打开这个链接看看 https://developer.android.google.cn/training/data-storage#scoped-storage
-            // see https://android-opengrok.bangnimang.net/android-11.0.0_r8/xref/frameworks/base/core/java/android/os/Environment.java
-            // redirect xxx/Android/data/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
-            NativeEngine.redirectDirectory(new File(storageRoot, "Android/data/").getAbsolutePath(), privatePath);
-            // redirect xxx/Android/obb/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
-            NativeEngine.redirectDirectory(new File(storageRoot, "Android/obb/").getAbsolutePath(), privatePath);
             // redirect /sdcard/ -> /sdcard/Android/media/<host>/vsdcard/<user>/
             NativeEngine.redirectDirectory(storageRoot, vsPath);
+        }
+    }
+
+    /**
+     * Set up private storage redirection for virtual apps
+     * This ensures apps can access their private sdcard directories
+     */
+    private void setupPrivateStorageRedirection(ApplicationInfo info, int userId, String privatePath) {
+        try {
+            HashSet<String> storageRoots = getMountPoints();
+            storageRoots.add(Environment.getExternalStorageDirectory().getAbsolutePath());
+
+            VLog.d(TAG, "Setting up private storage redirection for package: " + info.packageName);
+            VLog.d(TAG, "Private path: " + privatePath);
+
+            for (String storageRoot : storageRoots) {
+                // redirect xxx/Android/data/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
+                String androidDataPath = new File(storageRoot, "Android/data/").getAbsolutePath();
+                NativeEngine.redirectDirectory(androidDataPath, privatePath);
+                VLog.d(TAG, "Redirected: " + androidDataPath + " -> " + privatePath);
+                
+                // redirect xxx/Android/obb/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
+                String androidObbPath = new File(storageRoot, "Android/obb/").getAbsolutePath();
+                NativeEngine.redirectDirectory(androidObbPath, privatePath);
+                VLog.d(TAG, "Redirected: " + androidObbPath + " -> " + privatePath);
+            }
+            
+            VLog.d(TAG, "Private storage redirection completed for package: " + info.packageName);
+        } catch (Exception e) {
+            VLog.e(TAG, "Failed to set up private storage redirection for package: " + info.packageName, e);
         }
     }
 

@@ -228,18 +228,28 @@ public class ExternalStorageProviderHook extends ProviderHook {
             // Handle different path patterns
             if (normalizedPath.startsWith("Android/data/")) {
                 String subPath = normalizedPath.substring("Android/data/".length());
-                return baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId + "/" + subPath;
+                String virtualPath = baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId + "/" + subPath;
+                VLog.d(TAG, "Redirecting Android/data/ access: %s -> %s", externalPath, virtualPath);
+                return virtualPath;
             } else if (normalizedPath.startsWith("Android/obb/")) {
                 String subPath = normalizedPath.substring("Android/obb/".length());
-                return baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId + "/obb/" + subPath;
+                String virtualPath = baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId + "/obb/" + subPath;
+                VLog.d(TAG, "Redirecting Android/obb/ access: %s -> %s", externalPath, virtualPath);
+                return virtualPath;
             } else if (normalizedPath.equals("Android/data") || normalizedPath.equals("Android/obb")) {
-                return baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId;
+                String virtualPath = baseVirtualPath + "/Android/data/" + packageName + "/virtual/" + userId;
+                VLog.d(TAG, "Redirecting Android directory access: %s -> %s", externalPath, virtualPath);
+                return virtualPath;
             } else if (normalizedPath.startsWith("Android/")) {
                 // Other Android directories
-                return baseVirtualPath + "/" + normalizedPath;
+                String virtualPath = baseVirtualPath + "/" + normalizedPath;
+                VLog.d(TAG, "Redirecting Android subdirectory access: %s -> %s", externalPath, virtualPath);
+                return virtualPath;
             } else {
                 // Root level directories (Downloads, Pictures, etc.)
-                return baseVirtualPath + "/" + normalizedPath;
+                String virtualPath = baseVirtualPath + "/" + normalizedPath;
+                VLog.d(TAG, "Redirecting general storage access: %s -> %s", externalPath, virtualPath);
+                return virtualPath;
             }
         } catch (Exception e) {
             VLog.w(TAG, "Error building virtual storage path for: " + externalPath, e);

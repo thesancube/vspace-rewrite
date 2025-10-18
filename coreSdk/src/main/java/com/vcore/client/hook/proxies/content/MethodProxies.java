@@ -87,21 +87,14 @@ class MethodProxies {
 
         @Override
         public Object call(Object who, Method method, Object... args) throws Throwable {
+            VLog.d("GetPersistedUriPermissions", "ContentResolver.getPersistedUriPermissions called - isVAppProcess: " + VirtualCore.get().isVAppProcess());
             // For virtual apps, handle URI permissions safely
             if (VirtualCore.get().isVAppProcess()) {
                 try {
-                    // Try to get URI permissions with the virtual app's UID
-                    int vuid = VClientImpl.get().getVUid();
-                    if (args.length > 0) {
-                        // Replace the UID parameter if it exists
-                        for (int i = 0; i < args.length; i++) {
-                            if (args[i] instanceof Integer) {
-                                args[i] = vuid;
-                                break;
-                            }
-                        }
-                    }
-                    return method.invoke(who, args);
+                    // For virtual apps, always return empty list to avoid UID validation issues
+                    // This prevents the SecurityException: Package does not belong to calling UID
+                    VLog.d("GetPersistedUriPermissions", "Virtual app requesting URI permissions, returning empty list to avoid UID validation");
+                    return new ArrayList<>();
                 } catch (Exception e) {
                     // If URI permissions fail, return empty list instead of crashing
                     VLog.w("GetPersistedUriPermissions", "Failed to get URI permissions in ContentResolver, returning empty list", e);
@@ -109,6 +102,7 @@ class MethodProxies {
                 }
             }
             
+            VLog.d("GetPersistedUriPermissions", "Non-virtual app, delegating to original method");
             return method.invoke(who, args);
         }
 

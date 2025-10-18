@@ -49,6 +49,7 @@ import com.vcore.client.hook.proxies.search.SearchManagerStub;
 import com.vcore.client.hook.proxies.shortcut.ShortcutServiceStub;
 import com.vcore.client.hook.proxies.telephony.TelephonyRegistryStub;
 import com.vcore.client.hook.proxies.telephony.TelephonyStub;
+import com.vcore.client.hook.proxies.uri.IUriGrantsManagerStub;
 import com.vcore.client.hook.proxies.usage.UsageStatsManagerStub;
 import com.vcore.client.hook.proxies.user.UserManagerStub;
 import com.vcore.client.hook.proxies.vibrator.VibratorStub;
@@ -149,6 +150,7 @@ public final class InvocationStubManager {
 			addInjector(new SearchManagerStub());
 			addInjector(new ContentServiceStub());
 			addInjector(new ConnectivityStub());
+			addInjector(new IUriGrantsManagerStub());
 
 			if (Build.VERSION.SDK_INT >= JELLY_BEAN_MR2) {
 				addInjector(new VibratorStub());
