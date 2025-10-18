@@ -15,7 +15,10 @@ android {
         targetSdk = Versions.maximumSdk
         versionCode = 1
         versionName = "1.0"
-
+        multiDexEnabled = false
+        ndk.apply {
+            abiFilters.addAll(Versions.cpuArch)
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

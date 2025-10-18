@@ -4,9 +4,13 @@ import android.content.pm.ApplicationInfo;
 import android.os.Build;
 
 import com.vcore.client.VClientImpl;
+import com.vcore.client.core.VirtualCore;
 import com.vcore.client.hook.base.MethodProxy;
+import com.vcore.helper.utils.VLog;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * author: weishu on 18/3/13.
@@ -62,6 +66,46 @@ class MethodProxies {
             }
 
             return super.beforeCall(who, method, args);
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetPersistedUriPermissions extends MethodProxy {
+
+        @Override
+        public String getMethodName() {
+            return "getPersistedUriPermissions";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            // For virtual apps, handle URI permissions safely
+            if (VirtualCore.get().isVAppProcess()) {
+                try {
+                    // Try to get URI permissions with the virtual app's UID
+                    int vuid = VClientImpl.get().getVUid();
+                    if (args.length > 0) {
+                        // Replace the UID parameter if it exists
+                        for (int i = 0; i < args.length; i++) {
+                            if (args[i] instanceof Integer) {
+                                args[i] = vuid;
+                                break;
+                            }
+                        }
+                    }
+                    return method.invoke(who, args);
+                } catch (Exception e) {
+                    // If URI permissions fail, return empty list instead of crashing
+                    VLog.w("GetPersistedUriPermissions", "Failed to get URI permissions in ContentResolver, returning empty list", e);
+                    return new ArrayList<>();
+                }
+            }
+            
+            return method.invoke(who, args);
         }
 
         @Override
