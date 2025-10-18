@@ -74,22 +74,20 @@ public class VEnvironment {
     }
     
     /**
-     * Ensure directory is created with proper ownership for virtual apps
+     * Ensure directory is created (virtual apps inherit host permissions)
      */
-    private static File ensureCreatedWithOwnership(File folder, int vuid) {
+    private static File ensureCreatedWithOwnership(File folder, int hostUid) {
         if (!folder.exists() && !folder.mkdirs()) {
             VLog.w(TAG, "Unable to create the directory: %s.", folder.getPath());
         } else if (folder.exists()) {
-            // Set proper permissions for existing directories
+            // Set basic permissions only (virtual apps inherit host permissions)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     FileUtils.chmod(folder.getAbsolutePath(), FileUtils.FileMode.MODE_755);
-                    // Change ownership to the virtual app's UID
-                    Os.chown(folder.getAbsolutePath(), vuid, vuid);
-                    VLog.d(TAG, "Created directory with ownership: " + folder.getAbsolutePath() + " UID: " + vuid);
+                    VLog.d(TAG, "Created directory: " + folder.getAbsolutePath() + " (host UID: " + hostUid + ")");
                 }
             } catch (Exception e) {
-                VLog.w(TAG, "Failed to set permissions/ownership for directory: " + folder.getAbsolutePath(), e);
+                VLog.w(TAG, "Failed to set permissions for directory: " + folder.getAbsolutePath(), e);
             }
         }
         return folder;
@@ -245,30 +243,29 @@ public class VEnvironment {
     }
     
     /**
-     * Get virtual private storage directory with proper ownership
+     * Get virtual private storage directory (virtual apps inherit host permissions)
      */
-    public static File getVirtualPrivateStorageDir(int userId, String packageName, int vuid) {
+    public static File getVirtualPrivateStorageDir(int userId, String packageName, int hostUid) {
         String base = String.format(Locale.ENGLISH, "%s/Android/media/%s/vsdcard/%d/Android/data/%s/virtual/%d", 
                 Environment.getExternalStorageDirectory(),
                 VirtualCore.get().getHostPkg(), userId, packageName, userId);
         File file = new File(base);
-        VLog.d(TAG, "Creating virtual private storage directory for package: " + base + " with UID: " + vuid);
+        VLog.d(TAG, "Creating virtual private storage directory for package: " + base + " (host UID: " + hostUid + ")");
         
-        // Ensure the entire directory structure is created with proper ownership
+        // Ensure the entire directory structure is created (no special ownership needed)
         File currentDir = file;
         while (currentDir != null && !currentDir.equals(Environment.getExternalStorageDirectory())) {
             if (!currentDir.exists()) {
                 currentDir.mkdirs();
             }
-            // Set permissions and ownership for each directory in the path
+            // Set basic permissions only (virtual apps inherit host permissions)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     FileUtils.chmod(currentDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
-                    Os.chown(currentDir.getAbsolutePath(), vuid, vuid);
-                    VLog.d(TAG, "Set ownership of directory: " + currentDir.getAbsolutePath() + " to UID: " + vuid);
+                    VLog.d(TAG, "Set permissions for directory: " + currentDir.getAbsolutePath());
                 }
             } catch (Exception e) {
-                VLog.w(TAG, "Failed to set permissions/ownership for directory: " + currentDir.getAbsolutePath(), e);
+                VLog.w(TAG, "Failed to set permissions for directory: " + currentDir.getAbsolutePath(), e);
             }
             currentDir = currentDir.getParentFile();
         }

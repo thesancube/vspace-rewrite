@@ -183,7 +183,9 @@ public final class VClientImpl extends IVClient.Stub {
 
     public void initProcess(IBinder token, int vuid) {
         this.token = token;
-        this.vuid = vuid;
+        // Use host app's UID instead of virtual UID to inherit permissions
+        this.vuid = VirtualCore.get().myUid();
+        VLog.d(TAG, "Virtual app using host UID: " + this.vuid + " (original vuid: " + vuid + ")");
     }
 
     private void handleNewIntent(NewIntentData data) {
@@ -504,20 +506,21 @@ public final class VClientImpl extends IVClient.Stub {
 
         setupVirtualStorage(info, userId);
         
-        // Set up additional permissions for file operations
-        setupFilePermissions(info, userId);
+        // Virtual apps now inherit host app's permissions, no separate permission setup needed
+        VLog.d(TAG, "Virtual app inheriting host app permissions for package: " + info.packageName);
 
         NativeEngine.enableIORedirect();
     }
 
     private void setupVirtualStorage(ApplicationInfo info, int userId) {
-        // Get the virtual UID for this app
-        int vuid = getVUid();
+        // Virtual apps now inherit host app's UID and permissions
+        int hostUid = VirtualCore.get().myUid();
+        VLog.d(TAG, "Virtual app using host UID for storage: " + hostUid);
         
-        // Always create the private storage directory with proper ownership
-        File privateDir = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName, vuid);
+        // Always create the private storage directory (no special ownership needed)
+        File privateDir = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName, hostUid);
         String privatePath = privateDir.getAbsolutePath();
-        VLog.d(TAG, "Created virtual private storage directory with ownership: " + privatePath);
+        VLog.d(TAG, "Created virtual private storage directory: " + privatePath);
         
         NativeEngine.whitelist(privatePath, true);
         

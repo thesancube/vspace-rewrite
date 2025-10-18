@@ -64,7 +64,7 @@ dependencies {
     implementation(project(":freereflection"))
     implementation(libs.bundles.androidx.common)
 
-    implementation("com.bytedance.android:shadowhook:2.0.0")
+//    implementation("com.bytedance.android:shadowhook:2.0.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
 

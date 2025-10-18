@@ -7,7 +7,7 @@ object Versions {
     const val versionName = "2.0-beta"
     const val ndkVersion = "24.0.8215888"
     const val cmakeVersion = "3.22.1"
-//    var cpuArch = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-    var cpuArch = listOf("arm64-v8a")
+    var cpuArch = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+//    var cpuArch = listOf("arm64-v8a")
 
 }
