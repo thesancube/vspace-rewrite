@@ -5,6 +5,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 
 import com.vcore.client.core.VirtualCore;
+import com.vcore.helper.utils.VLog;
 import com.vcore.server.INotificationManager;
 import com.vcore.server.notification.NotificationCompat;
 
@@ -36,9 +37,20 @@ public class VNotificationManager {
     }
 
     public boolean dealNotification(int id, Notification notification, String packageName) {
-        if(notification == null)return false;
-        return VirtualCore.get().getHostPkg().equals(packageName)
-                || mNotificationCompat.dealNotification(id, notification, packageName);
+        if(notification == null) return false;
+        
+        // Always allow notifications from host app
+        if (VirtualCore.get().getHostPkg().equals(packageName)) {
+            return true;
+        }
+        
+        // For virtual apps, process the notification through the compatibility layer
+        try {
+            return mNotificationCompat.dealNotification(id, notification, packageName);
+        } catch (Exception e) {
+            VLog.w("VNotificationManager", "Failed to process notification for package: " + packageName, e);
+            return false;
+        }
     }
 
     public int dealNotificationId(int id, String packageName, String tag, int userId) {
@@ -59,6 +71,14 @@ public class VNotificationManager {
         return tag;
     }
 
+    public void addNotification(int id, String tag, String packageName, int userId) {
+        try {
+            getService().addNotification(id, tag, packageName, userId);
+        } catch (RemoteException e) {
+            VLog.w("VNotificationManager", "Failed to add notification for package: " + packageName, e);
+        }
+    }
+
     public boolean areNotificationsEnabledForPackage(String packageName, int userId) {
         try {
             return getService().areNotificationsEnabledForPackage(packageName, userId);
@@ -71,14 +91,6 @@ public class VNotificationManager {
     public void setNotificationsEnabledForPackage(String packageName, boolean enable, int userId) {
         try {
             getService().setNotificationsEnabledForPackage(packageName, enable, userId);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void addNotification(int id, String tag, String packageName, int userId) {
-        try {
-            getService().addNotification(id, tag, packageName, userId);
         } catch (RemoteException e) {
             e.printStackTrace();
         }

@@ -32,18 +32,40 @@ class MethodProxies {
             if (getHostPkg().equals(pkg)) {
                 return method.invoke(who, args);
             }
-            int notificationIndex = ArrayUtils.indexOfFirst(args, Notification.class);
-            int idIndex = ArrayUtils.indexOfFirst(args, Integer.class);
-            int id = (int) args[idIndex];
-            id = VNotificationManager.get().dealNotificationId(id, pkg, null, getAppUserId());
-            args[idIndex] = id;
-            Notification notification = (Notification) args[notificationIndex];
-            if (!VNotificationManager.get().dealNotification(id, notification, pkg)) {
+            
+            try {
+                int notificationIndex = ArrayUtils.indexOfFirst(args, Notification.class);
+                int idIndex = ArrayUtils.indexOfFirst(args, Integer.class);
+                int id = (int) args[idIndex];
+                
+                // Process notification ID and tag
+                id = VNotificationManager.get().dealNotificationId(id, pkg, null, getAppUserId());
+                args[idIndex] = id;
+                
+                Notification notification = (Notification) args[notificationIndex];
+                if (notification == null) {
+                    VLog.w("EnqueueNotification", "Notification is null for package: " + pkg);
+                    return 0;
+                }
+                
+                // Check if notifications are enabled for this package
+                if (!VNotificationManager.get().dealNotification(id, notification, pkg)) {
+                    VLog.d("EnqueueNotification", "Notification blocked for package: " + pkg);
+                    return 0;
+                }
+                
+                // Add notification to our tracking
+                VNotificationManager.get().addNotification(id, null, pkg, getAppUserId());
+                
+                // Replace package name with host package for system call
+                args[0] = getHostPkg();
+                
+                VLog.d("EnqueueNotification", "Sending notification for virtual app: " + pkg + " as host: " + getHostPkg());
+                return method.invoke(who, args);
+            } catch (Exception e) {
+                VLog.e("EnqueueNotification", "Error processing notification for package: " + pkg, e);
                 return 0;
             }
-            VNotificationManager.get().addNotification(id, null, pkg, getAppUserId());
-            args[0] = getHostPkg();
-            return method.invoke(who, args);
         }
     }
 

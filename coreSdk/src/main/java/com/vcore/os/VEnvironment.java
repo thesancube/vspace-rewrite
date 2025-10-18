@@ -59,6 +59,15 @@ public class VEnvironment {
     private static File ensureCreated(File folder) {
         if (!folder.exists() && !folder.mkdirs()) {
             VLog.w(TAG, "Unable to create the directory: %s.", folder.getPath());
+        } else if (folder.exists()) {
+            // Set proper permissions for existing directories
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    FileUtils.chmod(folder.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                }
+            } catch (Exception e) {
+                VLog.w(TAG, "Failed to set permissions for directory: " + folder.getAbsolutePath(), e);
+            }
         }
         return folder;
     }

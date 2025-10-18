@@ -59,6 +59,12 @@ public class ProviderHook implements InvocationHandler {
                 return new MediaProviderHook(provider);
             }
         });
+        PROVIDER_MAP.put("com.android.externalstorage.documents", new HookFetcher() {
+            @Override
+            public ProviderHook fetch(boolean external, IInterface provider) {
+                return new ExternalStorageProviderHook(provider);
+            }
+        });
     }
 
     protected final Object mBase;

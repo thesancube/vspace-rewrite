@@ -28,6 +28,7 @@ import android.system.ErrnoException;
 import android.system.Os;
 
 import com.vcore.client.core.CrashHandler;
+import com.vcore.helper.utils.FileUtils;
 import com.vcore.client.core.InvocationStubManager;
 import com.vcore.client.core.VirtualCore;
 import com.vcore.client.env.SpecialComponentList;
@@ -502,6 +503,9 @@ public final class VClientImpl extends IVClient.Stub {
         }
 
         setupVirtualStorage(info, userId);
+        
+        // Set up additional permissions for file operations
+        setupFilePermissions(info, userId);
 
         NativeEngine.enableIORedirect();
     }
@@ -510,6 +514,22 @@ public final class VClientImpl extends IVClient.Stub {
         // Always create the private storage directory regardless of virtual storage enablement
         String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName).getAbsolutePath();
         VLog.d(TAG, "Creating virtual private storage directory: " + privatePath);
+        
+        // Ensure the directory exists and has proper permissions
+        File privateDir = new File(privatePath);
+        if (!privateDir.exists()) {
+            privateDir.mkdirs();
+        }
+        
+        // Set proper permissions for file operations
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                FileUtils.chmod(privatePath, FileUtils.FileMode.MODE_755);
+            }
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to set permissions for private storage: " + privatePath, e);
+        }
+        
         NativeEngine.whitelist(privatePath, true);
         
         VirtualStorageManager vsManager = VirtualStorageManager.get();
@@ -556,10 +576,22 @@ public final class VClientImpl extends IVClient.Stub {
             }
             //noinspection ResultOfMethodCallIgnored
             virtualDir.mkdirs();
+            
+            // Set proper permissions for virtual directories
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    FileUtils.chmod(virtualDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                }
+            } catch (Exception e) {
+                VLog.w(TAG, "Failed to set permissions for virtual directory: " + virtualDir.getAbsolutePath(), e);
+            }
         }
 
         String vsPath = vsDir.getAbsolutePath();
         NativeEngine.whitelist(vsPath, true);
+        
+        // Also whitelist the private storage path for file operations
+        NativeEngine.whitelist(privatePath, true);
 
         for (String storageRoot : storageRoots) {
             for (String whiteDir : whiteList) {
@@ -577,6 +609,37 @@ public final class VClientImpl extends IVClient.Stub {
             NativeEngine.redirectDirectory(new File(storageRoot, "Android/obb/").getAbsolutePath(), privatePath);
             // redirect /sdcard/ -> /sdcard/Android/media/<host>/vsdcard/<user>/
             NativeEngine.redirectDirectory(storageRoot, vsPath);
+        }
+    }
+
+    /**
+     * Set up additional file permissions for virtual apps
+     */
+    private void setupFilePermissions(ApplicationInfo info, int userId) {
+        try {
+            // Ensure the app's data directory has proper permissions
+            File appDataDir = new File(info.dataDir);
+            if (appDataDir.exists()) {
+                FileUtils.chmod(info.dataDir, FileUtils.FileMode.MODE_755);
+            }
+            
+            // Set up permissions for virtual storage directories
+            String virtualStoragePath = VEnvironment.getVirtualStorageDir(info.packageName, userId).getAbsolutePath();
+            File virtualStorageDir = new File(virtualStoragePath);
+            if (virtualStorageDir.exists()) {
+                FileUtils.chmod(virtualStoragePath, FileUtils.FileMode.MODE_755);
+            }
+            
+            // Set up permissions for private storage
+            String privateStoragePath = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName).getAbsolutePath();
+            File privateStorageDir = new File(privateStoragePath);
+            if (privateStorageDir.exists()) {
+                FileUtils.chmod(privateStoragePath, FileUtils.FileMode.MODE_755);
+            }
+            
+            VLog.d(TAG, "File permissions set up for package: " + info.packageName);
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to set up file permissions for package: " + info.packageName, e);
         }
     }
 

@@ -70,6 +70,11 @@ public class VNotificationManagerService extends INotificationManager.Stub {
 
     @Override
     public boolean areNotificationsEnabledForPackage(String packageName, int userId) {
+        // Always allow notifications for host app
+        if (mContext.getPackageName().equals(packageName)) {
+            return true;
+        }
+        // Check if notifications are disabled for this virtual app
         return !mDisables.contains(packageName + ":" + userId);
     }
 
