@@ -196,7 +196,10 @@ public class BroadcastSystem {
     }
 
     private static final class StaticScheduler extends Handler {
-
+        public StaticScheduler() {
+            // Use main looper to avoid "Can't create handler inside thread that has not called Looper.prepare()" error
+            super(android.os.Looper.getMainLooper());
+        }
     }
 
     private static final class BroadcastRecord {
@@ -212,6 +215,11 @@ public class BroadcastSystem {
     }
 
     private final class TimeoutHandler extends Handler {
+        public TimeoutHandler() {
+            // Use main looper to avoid Handler creation issues
+            super(android.os.Looper.getMainLooper());
+        }
+        
         @Override
         public void handleMessage(Message msg) {
             IBinder token = (IBinder) msg.obj;

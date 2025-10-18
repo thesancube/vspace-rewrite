@@ -184,6 +184,7 @@ public class VEnvironment {
         String base = String.format(Locale.ENGLISH, "%s/Android/data/%s/%s/%d", Environment.getExternalStorageDirectory(),
                 VirtualCore.get().getHostPkg(), "virtual", userId);
         File file = new File(base);
+        VLog.d(TAG, "Creating virtual private storage directory: " + base);
         return ensureCreated(file);
     }
 

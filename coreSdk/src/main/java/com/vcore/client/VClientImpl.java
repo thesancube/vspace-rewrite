@@ -257,15 +257,28 @@ public final class VClientImpl extends IVClient.Stub {
         AppBindData data = new AppBindData();
         InstalledAppInfo info = VirtualCore.get().getInstalledAppInfo(packageName, 0);
         if (info == null) {
+            VLog.e(TAG, "App not exist: " + packageName);
             new Exception("App not exist!").printStackTrace();
-            Process.killProcess(0);
-            System.exit(0);
+            // Use safer process termination
+            Process.killProcess(Process.myPid());
+            return;
         }
-        data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
-        data.processName = processName;
-        data.appInfo.processName = processName;
-        data.providers = VPackageManager.get().queryContentProviders(processName, getVUid(), PackageManager.GET_META_DATA);
-        VLog.i(TAG, String.format("Binding application %s, (%s)", data.appInfo.packageName, data.processName));
+        try {
+            data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
+            if (data.appInfo == null) {
+                VLog.e(TAG, "Failed to get application info for: " + packageName);
+                Process.killProcess(Process.myPid());
+                return;
+            }
+            data.processName = processName;
+            data.appInfo.processName = processName;
+            data.providers = VPackageManager.get().queryContentProviders(processName, getVUid(), PackageManager.GET_META_DATA);
+            VLog.i(TAG, String.format("Binding application %s, (%s)", data.appInfo.packageName, data.processName));
+        } catch (Exception e) {
+            VLog.e(TAG, "Error getting application info for: " + packageName, e);
+            Process.killProcess(Process.myPid());
+            return;
+        }
         mBoundApplication = data;
         VirtualRuntime.setupRuntime(data.processName, data.appInfo);
         int targetSdkVersion = data.appInfo.targetSdkVersion;
@@ -277,11 +290,24 @@ public final class VClientImpl extends IVClient.Stub {
             mirror.android.os.Message.updateCheckRecycle.call(targetSdkVersion);
         }
         if (VASettings.ENABLE_IO_REDIRECT) {
-            startIOUniformer();
+            try {
+                startIOUniformer();
+            } catch (Exception e) {
+                VLog.e(TAG, "Error starting IO uniformer", e);
+            }
         }
-        NativeEngine.launchEngine();
+        try {
+            NativeEngine.launchEngine();
+        } catch (Exception e) {
+            VLog.e(TAG, "Error launching native engine", e);
+            // Don't kill process here, continue with initialization
+        }
         Object mainThread = VirtualCore.mainThread();
-        NativeEngine.startDexOverride();
+        try {
+            NativeEngine.startDexOverride();
+        } catch (Exception e) {
+            VLog.e(TAG, "Error starting dex override", e);
+        }
         Context context = createPackageContext(data.appInfo.packageName);
         try {
             // anti-virus, fuck ESET-NOD32: a variant of Android/AdDisplay.AdLock.AL potentially unwanted
@@ -481,6 +507,11 @@ public final class VClientImpl extends IVClient.Stub {
     }
 
     private void setupVirtualStorage(ApplicationInfo info, int userId) {
+        // Always create the private storage directory regardless of virtual storage enablement
+        String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId).getAbsolutePath();
+        VLog.d(TAG, "Creating virtual private storage directory: " + privatePath);
+        NativeEngine.whitelist(privatePath, true);
+        
         VirtualStorageManager vsManager = VirtualStorageManager.get();
         boolean enable = vsManager.isVirtualStorageEnable(info.packageName, userId);
         // Android 11, force enable storage redirect.
@@ -529,8 +560,6 @@ public final class VClientImpl extends IVClient.Stub {
 
         String vsPath = vsDir.getAbsolutePath();
         NativeEngine.whitelist(vsPath, true);
-        String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId).getAbsolutePath();
-        NativeEngine.whitelist(privatePath, true);
 
         for (String storageRoot : storageRoots) {
             for (String whiteDir : whiteList) {

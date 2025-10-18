@@ -37,14 +37,24 @@ public class NativeEngine {
 
     static {
         try {
+            VLog.d(TAG, "Loading native library: " + LIB_NAME);
             System.loadLibrary(LIB_NAME);
+            VLog.d(TAG, "Native library loaded successfully");
+        } catch (UnsatisfiedLinkError e) {
+            VLog.e(TAG, "Failed to load native library: " + LIB_NAME, e);
+            VLog.e(TAG, "Library path: " + System.getProperty("java.library.path"));
         } catch (Throwable e) {
-            VLog.e(TAG, VLog.getStackTraceString(e));
+            VLog.e(TAG, "Error loading native library: " + LIB_NAME, e);
         }
     }
 
     static {
-        NativeMethods.init();
+        try {
+            NativeMethods.init();
+            VLog.d(TAG, "Native methods initialized successfully");
+        } catch (Exception e) {
+            VLog.e(TAG, "Error initializing native methods", e);
+        }
     }
 
 
@@ -159,11 +169,15 @@ public class NativeEngine {
         if (sFlag) {
             return;
         }
-        Method[] methods = {NativeMethods.gOpenDexFileNative, NativeMethods.gCameraNativeSetup, NativeMethods.gAudioRecordNativeCheckPermission};
         try {
+            Method[] methods = {NativeMethods.gOpenDexFileNative, NativeMethods.gCameraNativeSetup, NativeMethods.gAudioRecordNativeCheckPermission};
+            VLog.d(TAG, "Launching native engine...");
             nativeLaunchEngine(methods, VirtualCore.get().getHostPkg(), VirtualRuntime.isArt(), Build.VERSION.SDK_INT, NativeMethods.gCameraMethodType);
+            VLog.d(TAG, "Native engine launched successfully");
+        } catch (UnsatisfiedLinkError e) {
+            VLog.e(TAG, "Native method not found - library may not be loaded properly", e);
         } catch (Throwable e) {
-            VLog.e(TAG, VLog.getStackTraceString(e));
+            VLog.e(TAG, "Error launching native engine", e);
         }
         sFlag = true;
     }

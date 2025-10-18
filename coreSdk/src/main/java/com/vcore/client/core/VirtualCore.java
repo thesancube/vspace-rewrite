@@ -224,6 +224,62 @@ public final class VirtualCore {
         ServiceManagerNative.ensureServerStarted();
     }
 
+    /**
+     * Check if VirtualCore is fully initialized and ready to use
+     * @return true if ready, false otherwise
+     */
+    public boolean isReady() {
+        if (!isStartUp) {
+            return false;
+        }
+        try {
+            // First ensure the server is started
+            ServiceManagerNative.ensureServerStarted();
+            
+            // Then check if we can get the service
+            IAppManager service = getService();
+            return service != null && service.asBinder().pingBinder();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Wait for VirtualCore to be ready with timeout
+     * @param timeoutMs timeout in milliseconds
+     * @return true if ready within timeout, false otherwise
+     */
+    public boolean waitForReady(long timeoutMs) {
+        long startTime = System.currentTimeMillis();
+        
+        // First ensure the server is started
+        try {
+            ServiceManagerNative.ensureServerStarted();
+        } catch (Exception e) {
+            return false;
+        }
+        
+        // Then wait for services to be available
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                IAppManager service = getService();
+                if (service != null && service.asBinder().pingBinder()) {
+                    return true;
+                }
+            } catch (Exception e) {
+                // Service not ready yet, continue waiting
+            }
+            
+            try {
+                Thread.sleep(200); // Check every 200ms
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return false;
+    }
+
     public boolean isEngineLaunched() {
         String engineProcessName = getEngineProcessName();
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -285,7 +341,9 @@ public final class VirtualCore {
                 || (!VirtualCore.get().isVAppProcess() && !mService.asBinder().pingBinder())) {
             synchronized (this) {
                 Object remote = getStubInterface();
-                mService = LocalProxyUtils.genProxy(IAppManager.class, remote);
+                if (remote != null) {
+                    mService = LocalProxyUtils.genProxy(IAppManager.class, remote);
+                }
             }
         }
         return mService;
@@ -366,9 +424,15 @@ public final class VirtualCore {
 
     public InstallResult installPackage(String apkPath, int flags) {
         try {
-            return getService().installPackage(apkPath, flags);
+            IAppManager service = getService();
+            if (service == null) {
+                return InstallResult.makeFailure("VirtualCore service not ready. Please ensure VirtualCore.startup() is called and wait for initialization to complete.");
+            }
+            return service.installPackage(apkPath, flags);
         } catch (RemoteException e) {
             return VirtualRuntime.crash(e);
+        } catch (NullPointerException e) {
+            return InstallResult.makeFailure("VirtualCore service not initialized. Call VirtualCore.startup() first and wait for completion.");
         }
     }
 
@@ -458,11 +522,22 @@ public final class VirtualCore {
             activityInfo = ris.get(0).activityInfo;
         }
 
-        Intent intent = new Intent(intentToResolve);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setClassName(activityInfo.packageName,
-                activityInfo.name);
-        return intent;
+        // Create intent to the target app activity
+        Intent targetIntent = new Intent(intentToResolve);
+        targetIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        targetIntent.setClassName(activityInfo.packageName, activityInfo.name);
+        
+        // Create a wrapper intent that will be handled by VActivityManager
+        Intent wrapperIntent = new Intent();
+        wrapperIntent.setClassName(getHostPkg(), VASettings.STUB_ACTIVITY + "$C0");
+        wrapperIntent.putExtra("_VA_|_intent_", targetIntent);
+        wrapperIntent.putExtra("_VA_|_info_", activityInfo);
+        wrapperIntent.putExtra("_VA_|_caller_", (ComponentName) null);
+        wrapperIntent.putExtra("_VA_|_user_id_", userId);
+        wrapperIntent.putExtra("_VA_|_from_inner_", true);
+        wrapperIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        
+        return wrapperIntent;
     }
 
     public boolean createShortcut(int userId, String packageName, OnEmitShortcutListener listener) {
