@@ -508,7 +508,7 @@ public final class VClientImpl extends IVClient.Stub {
 
     private void setupVirtualStorage(ApplicationInfo info, int userId) {
         // Always create the private storage directory regardless of virtual storage enablement
-        String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId).getAbsolutePath();
+        String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName).getAbsolutePath();
         VLog.d(TAG, "Creating virtual private storage directory: " + privatePath);
         NativeEngine.whitelist(privatePath, true);
         
@@ -571,11 +571,11 @@ public final class VClientImpl extends IVClient.Stub {
             // Android 11 -> see https://developer.android.com/training/data-storage#scoped-storage
             // 安卓11 打开这个链接看看 https://developer.android.google.cn/training/data-storage#scoped-storage
             // see https://android-opengrok.bangnimang.net/android-11.0.0_r8/xref/frameworks/base/core/java/android/os/Environment.java
-            // redirect xxx/Android/data/ -> /xxx/Android/data/<host>/virtual/<user>
+            // redirect xxx/Android/data/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
             NativeEngine.redirectDirectory(new File(storageRoot, "Android/data/").getAbsolutePath(), privatePath);
-            // redirect xxx/Android/obb/ -> /xxx/Android/data/<host>/virtual/<user>
+            // redirect xxx/Android/obb/ -> /xxx/Android/media/<host>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
             NativeEngine.redirectDirectory(new File(storageRoot, "Android/obb/").getAbsolutePath(), privatePath);
-            // redirect /sdcard/ -> vsdcard
+            // redirect /sdcard/ -> /sdcard/Android/media/<host>/vsdcard/<user>/
             NativeEngine.redirectDirectory(storageRoot, vsPath);
         }
     }

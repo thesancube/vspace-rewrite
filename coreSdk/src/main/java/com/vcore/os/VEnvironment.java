@@ -162,7 +162,7 @@ public class VEnvironment {
     public static File getVirtualStorageBaseDir() {
         File externalFilesRoot = Environment.getExternalStorageDirectory();
         if (externalFilesRoot != null) {
-            File vBaseDir = new File(externalFilesRoot, "VirtualXposed");
+            File vBaseDir = new File(externalFilesRoot, "Android/media/" + VirtualCore.get().getHostPkg());
             File vSdcard = new File(vBaseDir, "vsdcard");
             return ensureCreated(vSdcard);
         }
@@ -179,17 +179,21 @@ public class VEnvironment {
         return ensureCreated(userBase);
     }
 
-    // /sdcard/Android/data/<host_package>/virtual/<user>
+    // /sdcard/Android/media/<host_package>/vsdcard/<user>/Android/data/<sandboxed_package>/virtual/<user>
     public static File getVirtualPrivateStorageDir(int userId) {
-        String base = String.format(Locale.ENGLISH, "%s/Android/data/%s/%s/%d", Environment.getExternalStorageDirectory(),
-                VirtualCore.get().getHostPkg(), "virtual", userId);
+        String base = String.format(Locale.ENGLISH, "%s/Android/media/%s/vsdcard/%d/Android/data", Environment.getExternalStorageDirectory(),
+                VirtualCore.get().getHostPkg(), userId);
         File file = new File(base);
         VLog.d(TAG, "Creating virtual private storage directory: " + base);
         return ensureCreated(file);
     }
 
     public static File getVirtualPrivateStorageDir(int userId, String packageName) {
-        File file = new File(getVirtualPrivateStorageDir(userId), packageName);
+        String base = String.format(Locale.ENGLISH, "%s/Android/media/%s/vsdcard/%d/Android/data/%s/virtual/%d", 
+                Environment.getExternalStorageDirectory(),
+                VirtualCore.get().getHostPkg(), userId, packageName, userId);
+        File file = new File(base);
+        VLog.d(TAG, "Creating virtual private storage directory for package: " + base);
         return ensureCreated(file);
     }
 
