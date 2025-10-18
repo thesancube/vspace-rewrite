@@ -66,8 +66,8 @@ class MainActivity : ComponentActivity() {
                 runOnUiThread {
                     Log.d("VirtualCore", "✅ Attempting to clone app...")
                     Toast.makeText(this, "Starting app cloning...", Toast.LENGTH_SHORT).show()
-                    cloneInstalledApp("com.dts.freefiremax") {
-                        launchApp("com.dts.freefiremax", 0)
+                    cloneInstalledApp("ru.zdevs.zarchiver") {
+                        launchApp("ru.zdevs.zarchiver", 0)
                     }
                 }
             } catch (e: Exception) {

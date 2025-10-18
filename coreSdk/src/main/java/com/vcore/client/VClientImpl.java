@@ -670,6 +670,9 @@ public final class VClientImpl extends IVClient.Stub {
             // Ensure vsdcard directory has proper permissions
             setupVSDCardPermissions(info.packageName, userId, vuid);
             
+            // Ensure runtime access to storage directories
+            ensureStorageAccess(info.packageName, userId, vuid);
+            
             VLog.d(TAG, "File permissions and ownership set up for package: " + info.packageName);
         } catch (Exception e) {
             VLog.w(TAG, "Failed to set up file permissions for package: " + info.packageName, e);
@@ -681,30 +684,111 @@ public final class VClientImpl extends IVClient.Stub {
      */
     private void setupVSDCardPermissions(String packageName, int userId, int vuid) {
         try {
+            VLog.d(TAG, "Setting up vsdcard permissions for package: " + packageName + " user: " + userId + " UID: " + vuid);
+            
             // Get the vsdcard base directory
             File vsdcardBase = VEnvironment.getVirtualStorageBaseDir();
             if (vsdcardBase != null) {
-                File userVsdcard = new File(vsdcardBase, String.valueOf(userId));
-                if (userVsdcard.exists()) {
-                    // Set permissions for the user's vsdcard directory
-                    FileUtils.chmod(userVsdcard.getAbsolutePath(), FileUtils.FileMode.MODE_755);
-                    changeFileOwnership(userVsdcard, vuid);
-                    VLog.d(TAG, "Set vsdcard permissions for user " + userId + " with UID " + vuid);
-                    
-                    // Recursively set permissions for all subdirectories
-                    setDirectoryPermissionsRecursive(userVsdcard, vuid);
+                // Ensure the base vsdcard directory exists and has proper permissions
+                if (!vsdcardBase.exists()) {
+                    vsdcardBase.mkdirs();
                 }
+                FileUtils.chmod(vsdcardBase.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(vsdcardBase, vuid);
+                VLog.d(TAG, "Set base vsdcard permissions: " + vsdcardBase.getAbsolutePath());
+                
+                File userVsdcard = new File(vsdcardBase, String.valueOf(userId));
+                if (!userVsdcard.exists()) {
+                    userVsdcard.mkdirs();
+                }
+                // Set permissions for the user's vsdcard directory
+                FileUtils.chmod(userVsdcard.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(userVsdcard, vuid);
+                VLog.d(TAG, "Set vsdcard permissions for user " + userId + " with UID " + vuid);
+                
+                // Recursively set permissions for all subdirectories
+                setDirectoryPermissionsRecursive(userVsdcard, vuid);
             }
             
             // Also ensure the Android/data and Android/obb directories have proper permissions
             String androidDataPath = VEnvironment.getVirtualPrivateStorageDir(userId, packageName).getAbsolutePath();
             File androidDataDir = new File(androidDataPath);
+            if (!androidDataDir.exists()) {
+                androidDataDir.mkdirs();
+            }
             if (androidDataDir.exists()) {
                 setDirectoryPermissionsRecursive(androidDataDir, vuid);
             }
             
+            // Ensure the virtual storage directory for this package has proper permissions
+            File virtualStorageDir = VEnvironment.getVirtualStorageDir(packageName, userId);
+            if (virtualStorageDir != null) {
+                if (!virtualStorageDir.exists()) {
+                    virtualStorageDir.mkdirs();
+                }
+                setDirectoryPermissionsRecursive(virtualStorageDir, vuid);
+            }
+            
+            // Set up permissions for the entire virtual storage path structure
+            setupVirtualStoragePathPermissions(packageName, userId, vuid);
+            
         } catch (Exception e) {
             VLog.w(TAG, "Failed to set up vsdcard permissions for package: " + packageName, e);
+        }
+    }
+    
+    /**
+     * Set up permissions for the entire virtual storage path structure
+     */
+    private void setupVirtualStoragePathPermissions(String packageName, int userId, int vuid) {
+        try {
+            // Get the base external storage directory
+            File externalStorage = Environment.getExternalStorageDirectory();
+            if (externalStorage != null) {
+                // Set up permissions for the Android directory
+                File androidDir = new File(externalStorage, "Android");
+                if (!androidDir.exists()) {
+                    androidDir.mkdirs();
+                }
+                FileUtils.chmod(androidDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(androidDir, vuid);
+                
+                // Set up permissions for the media directory
+                File mediaDir = new File(androidDir, "media");
+                if (!mediaDir.exists()) {
+                    mediaDir.mkdirs();
+                }
+                FileUtils.chmod(mediaDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(mediaDir, vuid);
+                
+                // Set up permissions for the host package directory
+                File hostPackageDir = new File(mediaDir, VirtualCore.get().getHostPkg());
+                if (!hostPackageDir.exists()) {
+                    hostPackageDir.mkdirs();
+                }
+                FileUtils.chmod(hostPackageDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(hostPackageDir, vuid);
+                
+                // Set up permissions for the vsdcard directory
+                File vsdcardDir = new File(hostPackageDir, "vsdcard");
+                if (!vsdcardDir.exists()) {
+                    vsdcardDir.mkdirs();
+                }
+                FileUtils.chmod(vsdcardDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(vsdcardDir, vuid);
+                
+                // Set up permissions for the user directory
+                File userDir = new File(vsdcardDir, String.valueOf(userId));
+                if (!userDir.exists()) {
+                    userDir.mkdirs();
+                }
+                FileUtils.chmod(userDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(userDir, vuid);
+                
+                VLog.d(TAG, "Set up virtual storage path permissions for package: " + packageName);
+            }
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to set up virtual storage path permissions for package: " + packageName, e);
         }
     }
     
@@ -717,6 +801,7 @@ public final class VClientImpl extends IVClient.Stub {
                 // Set permissions for the directory itself
                 FileUtils.chmod(directory.getAbsolutePath(), FileUtils.FileMode.MODE_755);
                 changeFileOwnership(directory, vuid);
+                VLog.d(TAG, "Set permissions for directory: " + directory.getAbsolutePath() + " UID: " + vuid);
                 
                 // Recursively process subdirectories
                 File[] children = directory.listFiles();
@@ -728,12 +813,82 @@ public final class VClientImpl extends IVClient.Stub {
                             // Set permissions for files
                             FileUtils.chmod(child.getAbsolutePath(), FileUtils.FileMode.MODE_755);
                             changeFileOwnership(child, vuid);
+                            VLog.d(TAG, "Set permissions for file: " + child.getAbsolutePath() + " UID: " + vuid);
                         }
                     }
                 }
+            } else if (directory.exists() && directory.isFile()) {
+                // Handle single files
+                FileUtils.chmod(directory.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(directory, vuid);
+                VLog.d(TAG, "Set permissions for file: " + directory.getAbsolutePath() + " UID: " + vuid);
             }
         } catch (Exception e) {
             VLog.w(TAG, "Failed to set permissions recursively for: " + directory.getAbsolutePath(), e);
+        }
+    }
+    
+    /**
+     * Ensure runtime access to storage directories for virtual apps
+     */
+    private void ensureStorageAccess(String packageName, int userId, int vuid) {
+        try {
+            VLog.d(TAG, "Ensuring storage access for package: " + packageName + " UID: " + vuid);
+            
+            // Get the virtual storage directory
+            File virtualStorageDir = VEnvironment.getVirtualStorageDir(packageName, userId);
+            if (virtualStorageDir != null) {
+                // Ensure the directory exists and is accessible
+                if (!virtualStorageDir.exists()) {
+                    virtualStorageDir.mkdirs();
+                }
+                
+                // Test if we can create a file in the directory
+                File testFile = new File(virtualStorageDir, ".test_access");
+                try {
+                    if (testFile.createNewFile()) {
+                        VLog.d(TAG, "Successfully created test file in virtual storage: " + testFile.getAbsolutePath());
+                        testFile.delete();
+                    } else {
+                        VLog.w(TAG, "Could not create test file in virtual storage: " + virtualStorageDir.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    VLog.w(TAG, "Failed to create test file in virtual storage", e);
+                    // Try to fix permissions
+                    FileUtils.chmod(virtualStorageDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                    changeFileOwnership(virtualStorageDir, vuid);
+                }
+            }
+            
+            // Get the private storage directory
+            File privateStorageDir = VEnvironment.getVirtualPrivateStorageDir(userId, packageName);
+            if (privateStorageDir != null) {
+                // Ensure the directory exists and is accessible
+                if (!privateStorageDir.exists()) {
+                    privateStorageDir.mkdirs();
+                }
+                
+                // Test if we can create a file in the directory
+                File testFile = new File(privateStorageDir, ".test_access");
+                try {
+                    if (testFile.createNewFile()) {
+                        VLog.d(TAG, "Successfully created test file in private storage: " + testFile.getAbsolutePath());
+                        testFile.delete();
+                    } else {
+                        VLog.w(TAG, "Could not create test file in private storage: " + privateStorageDir.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    VLog.w(TAG, "Failed to create test file in private storage", e);
+                    // Try to fix permissions
+                    FileUtils.chmod(privateStorageDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                    changeFileOwnership(privateStorageDir, vuid);
+                }
+            }
+            
+            VLog.d(TAG, "Storage access verification completed for package: " + packageName);
+            
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to ensure storage access for package: " + packageName, e);
         }
     }
     
@@ -746,9 +901,24 @@ public final class VClientImpl extends IVClient.Stub {
                 // Use Os.chown to change ownership
                 Os.chown(file.getAbsolutePath(), vuid, vuid);
                 VLog.d(TAG, "Changed ownership of " + file.getAbsolutePath() + " to UID: " + vuid);
+                
+                // Also try to set the group ownership explicitly
+                try {
+                    Os.chown(file.getAbsolutePath(), vuid, vuid);
+                } catch (Exception e) {
+                    VLog.w(TAG, "Failed to set group ownership for " + file.getAbsolutePath(), e);
+                }
             }
         } catch (Exception e) {
             VLog.w(TAG, "Failed to change ownership of " + file.getAbsolutePath() + " to UID: " + vuid, e);
+            
+            // Try alternative approach using chmod to ensure the file is accessible
+            try {
+                FileUtils.chmod(file.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                VLog.d(TAG, "Set alternative permissions for " + file.getAbsolutePath());
+            } catch (Exception ex) {
+                VLog.w(TAG, "Failed to set alternative permissions for " + file.getAbsolutePath(), ex);
+            }
         }
     }
     
