@@ -46,7 +46,15 @@ public class VNotificationManager {
         
         // For virtual apps, process the notification through the compatibility layer
         try {
-            return mNotificationCompat.dealNotification(id, notification, packageName);
+            boolean processed = mNotificationCompat.dealNotification(id, notification, packageName);
+            if (processed) {
+                VLog.d("VNotificationManager", "Notification processed successfully for virtual app: " + packageName);
+                // The notification will be sent to the system by the hook in MethodProxies
+                return true;
+            } else {
+                VLog.w("VNotificationManager", "Notification processing failed for virtual app: " + packageName);
+                return false;
+            }
         } catch (Exception e) {
             VLog.w("VNotificationManager", "Failed to process notification for package: " + packageName, e);
             return false;

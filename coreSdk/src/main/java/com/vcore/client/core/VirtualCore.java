@@ -33,6 +33,8 @@ import com.vcore.client.VClientImpl;
 import com.vcore.client.env.Constants;
 import com.vcore.client.env.VirtualRuntime;
 import com.vcore.client.fixer.ContextFixer;
+import com.vcore.client.PermissionHandler;
+import com.vcore.client.NotificationPermissionHelper;
 import com.vcore.client.hook.delegate.ComponentDelegate;
 import com.vcore.client.hook.delegate.PhoneInfoDelegate;
 import com.vcore.client.hook.delegate.TaskDescriptionDelegate;
@@ -212,6 +214,10 @@ public final class VirtualCore {
             invocationStubManager.init();
             invocationStubManager.injectAll();
             ContextFixer.fixContext(context);
+            
+            // Initialize permission handler for storage access
+            initializePermissionHandler();
+            
             isStartUp = true;
             if (initLock != null) {
                 initLock.open();
@@ -222,6 +228,50 @@ public final class VirtualCore {
 
     public void waitForEngine() {
         ServiceManagerNative.ensureServerStarted();
+    }
+    
+    /**
+     * Initialize permission handler for virtual storage access
+     */
+    private void initializePermissionHandler() {
+        try {
+            PermissionHandler permissionHandler = new PermissionHandler(context);
+            android.util.Log.d("VirtualCore", "Permission handler initialized");
+            android.util.Log.d("VirtualCore", "Current permission status:\n" + permissionHandler.getPermissionStatus());
+            
+            // Check if we need to request permissions
+            if (!permissionHandler.hasAllPermissions()) {
+                android.util.Log.w("VirtualCore", "Some permissions are missing for virtual storage access");
+                // Note: Permission request should be handled by the main app activity
+                // This is just for logging and initialization
+            } else {
+                android.util.Log.d("VirtualCore", "All required permissions are granted");
+            }
+            
+            // Initialize notification system
+            initializeNotificationSystem();
+            
+        } catch (Exception e) {
+            android.util.Log.w("VirtualCore", "Failed to initialize permission handler", e);
+        }
+    }
+    
+    /**
+     * Initialize notification system for all Android versions
+     */
+    private void initializeNotificationSystem() {
+        try {
+            android.util.Log.d("VirtualCore", "Initializing notification system");
+            
+            // Ensure notification channels are created
+            NotificationPermissionHelper.ensureNotificationSetup(context);
+            
+            // Log notification status
+            android.util.Log.d("VirtualCore", "Notification setup status:\n" + NotificationPermissionHelper.getNotificationStatus(context));
+            
+        } catch (Exception e) {
+            android.util.Log.w("VirtualCore", "Failed to initialize notification system", e);
+        }
     }
 
     /**

@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+
         virtualCore = VirtualCore.get()
 
         setContent {
@@ -65,8 +66,8 @@ class MainActivity : ComponentActivity() {
                 runOnUiThread {
                     Log.d("VirtualCore", "✅ Attempting to clone app...")
                     Toast.makeText(this, "Starting app cloning...", Toast.LENGTH_SHORT).show()
-                    cloneInstalledApp("ru.zdevs.zarchiver") {
-                        launchApp("ru.zdevs.zarchiver", 0)
+                    cloneInstalledApp("com.dts.freefiremax") {
+                        launchApp("com.dts.freefiremax", 0)
                     }
                 }
             } catch (e: Exception) {

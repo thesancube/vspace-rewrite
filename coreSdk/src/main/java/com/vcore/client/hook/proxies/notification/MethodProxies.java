@@ -1,12 +1,16 @@
 package com.vcore.client.hook.proxies.notification;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.os.Build;
 
 import com.vcore.client.core.VirtualCore;
 import com.vcore.client.hook.base.MethodProxy;
 import com.vcore.client.hook.utils.MethodParameterUtils;
 import com.vcore.client.ipc.VNotificationManager;
+import com.vcore.client.NotificationPermissionHelper;
 import com.vcore.helper.utils.ArrayUtils;
 import com.vcore.helper.utils.VLog;
 
@@ -52,6 +56,11 @@ class MethodProxies {
                 if (!VNotificationManager.get().dealNotification(id, notification, pkg)) {
                     VLog.d("EnqueueNotification", "Notification blocked for package: " + pkg);
                     return 0;
+                }
+                
+                // Ensure notification has proper channel for Android O+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ensureNotificationChannel(notification, pkg);
                 }
                 
                 // Add notification to our tracking
@@ -201,6 +210,45 @@ class MethodProxies {
             boolean enable = (boolean) args[enableIndex];
             VNotificationManager.get().setNotificationsEnabledForPackage(pkg, enable, getAppUserId());
             return 0;
+        }
+    }
+    
+    /**
+     * Ensure notification has proper channel for Android O+
+     */
+    private static void ensureNotificationChannel(Notification notification, String packageName) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Context context = VirtualCore.get().getContext();
+                NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+                
+                if (notificationManager != null) {
+                    // Check if notification already has a channel
+                    if (notification.getChannelId() == null || notification.getChannelId().isEmpty()) {
+                        // Use the app notifications channel for virtual apps
+                        String channelId = NotificationPermissionHelper.CHANNEL_ID_APP_NOTIFICATIONS;
+                        
+                        // Check if channel exists
+                        NotificationChannel channel = notificationManager.getNotificationChannel(channelId);
+                        if (channel == null) {
+                            // Create the channel if it doesn't exist
+                            NotificationPermissionHelper.createNotificationChannels(context);
+                        }
+                        
+                        // Set the channel ID using reflection since it's not directly accessible
+                        try {
+                            java.lang.reflect.Field channelIdField = Notification.class.getDeclaredField("mChannelId");
+                            channelIdField.setAccessible(true);
+                            channelIdField.set(notification, channelId);
+                            VLog.d("EnqueueNotification", "Set channel ID for virtual app notification: " + channelId);
+                        } catch (Exception e) {
+                            VLog.w("EnqueueNotification", "Failed to set channel ID for notification", e);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                VLog.w("EnqueueNotification", "Failed to ensure notification channel", e);
+            }
         }
     }
 }

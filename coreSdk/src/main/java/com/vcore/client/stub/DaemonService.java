@@ -6,11 +6,13 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 
 import com.vcore.client.core.VirtualCore;
 import com.vcore.client.env.Constants;
+import com.vcore.client.NotificationPermissionHelper;
 
 import java.io.File;
 
@@ -51,19 +53,8 @@ public class DaemonService extends Service {
 	}
 
 	private void createNotificationChannel() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			NotificationChannel channel = new NotificationChannel(
-				CHANNEL_ID,
-				"VirtualCore Daemon",
-				NotificationManager.IMPORTANCE_MIN
-			);
-			channel.setDescription("Keeps virtual apps running");
-			channel.setShowBadge(false);
-			NotificationManager manager = getSystemService(NotificationManager.class);
-			if (manager != null) {
-				manager.createNotificationChannel(channel);
-			}
-		}
+		// Use the enhanced notification helper
+		NotificationPermissionHelper.createNotificationChannels(this);
 	}
 
 	private Notification createNotification() {
@@ -86,7 +77,24 @@ public class DaemonService extends Service {
 		}
 		createNotificationChannel();
         startService(new Intent(this, InnerService.class));
-        startForeground(NOTIFY_ID, createNotification());
+        
+        // Start foreground service with proper type for Android 15+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 15+ requires foreground service type
+                startForeground(NOTIFY_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else {
+                startForeground(NOTIFY_ID, createNotification());
+            }
+        } catch (Exception e) {
+            // Fallback for older versions or if service type is not supported
+            try {
+                startForeground(NOTIFY_ID, createNotification());
+            } catch (Exception fallbackException) {
+                // Ignore errors during early initialization
+                e.printStackTrace();
+            }
+        }
 	}
 
 	@Override
@@ -111,7 +119,13 @@ public class DaemonService extends Service {
         @Override
         public int onStartCommand(Intent intent, int flags, int startId) {
             try {
-                startForeground(NOTIFY_ID, createNotification());
+                // Start foreground service with proper type for Android 15+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // Android 15+ requires foreground service type
+                    startForeground(NOTIFY_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                } else {
+                    startForeground(NOTIFY_ID, createNotification());
+                }
                 stopForeground(true);
                 stopSelf();
             } catch (Exception e) {

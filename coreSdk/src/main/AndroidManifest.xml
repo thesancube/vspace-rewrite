@@ -231,11 +231,13 @@
     <application>
         <service
             android:name="com.vcore.client.stub.DaemonService"
-            android:process="@string/engine_process_name" />
+            android:process="@string/engine_process_name"
+            android:foregroundServiceType="specialUse" />
 
         <service
             android:name="com.vcore.client.stub.DaemonService$InnerService"
-            android:process="@string/engine_process_name" />
+            android:process="@string/engine_process_name"
+            android:foregroundServiceType="specialUse" />
 
         <activity
             android:name="com.vcore.client.stub.ShortcutHandleActivity"

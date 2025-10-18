@@ -3,6 +3,7 @@ package com.vcore.os;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
+import android.system.Os;
 
 import com.vcore.client.core.VirtualCore;
 import com.vcore.helper.utils.EncodeUtils;
@@ -67,6 +68,28 @@ public class VEnvironment {
                 }
             } catch (Exception e) {
                 VLog.w(TAG, "Failed to set permissions for directory: " + folder.getAbsolutePath(), e);
+            }
+        }
+        return folder;
+    }
+    
+    /**
+     * Ensure directory is created with proper ownership for virtual apps
+     */
+    private static File ensureCreatedWithOwnership(File folder, int vuid) {
+        if (!folder.exists() && !folder.mkdirs()) {
+            VLog.w(TAG, "Unable to create the directory: %s.", folder.getPath());
+        } else if (folder.exists()) {
+            // Set proper permissions for existing directories
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    FileUtils.chmod(folder.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                    // Change ownership to the virtual app's UID
+                    Os.chown(folder.getAbsolutePath(), vuid, vuid);
+                    VLog.d(TAG, "Created directory with ownership: " + folder.getAbsolutePath() + " UID: " + vuid);
+                }
+            } catch (Exception e) {
+                VLog.w(TAG, "Failed to set permissions/ownership for directory: " + folder.getAbsolutePath(), e);
             }
         }
         return folder;
@@ -219,6 +242,38 @@ public class VEnvironment {
         }
         
         return ensureCreated(file);
+    }
+    
+    /**
+     * Get virtual private storage directory with proper ownership
+     */
+    public static File getVirtualPrivateStorageDir(int userId, String packageName, int vuid) {
+        String base = String.format(Locale.ENGLISH, "%s/Android/media/%s/vsdcard/%d/Android/data/%s/virtual/%d", 
+                Environment.getExternalStorageDirectory(),
+                VirtualCore.get().getHostPkg(), userId, packageName, userId);
+        File file = new File(base);
+        VLog.d(TAG, "Creating virtual private storage directory for package: " + base + " with UID: " + vuid);
+        
+        // Ensure the entire directory structure is created with proper ownership
+        File currentDir = file;
+        while (currentDir != null && !currentDir.equals(Environment.getExternalStorageDirectory())) {
+            if (!currentDir.exists()) {
+                currentDir.mkdirs();
+            }
+            // Set permissions and ownership for each directory in the path
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    FileUtils.chmod(currentDir.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                    Os.chown(currentDir.getAbsolutePath(), vuid, vuid);
+                    VLog.d(TAG, "Set ownership of directory: " + currentDir.getAbsolutePath() + " to UID: " + vuid);
+                }
+            } catch (Exception e) {
+                VLog.w(TAG, "Failed to set permissions/ownership for directory: " + currentDir.getAbsolutePath(), e);
+            }
+            currentDir = currentDir.getParentFile();
+        }
+        
+        return file;
     }
 
     public static File getWifiMacFile(int userId) {

@@ -184,6 +184,8 @@ public class NativeEngine {
             return;
         }
         
+        VLog.d(TAG, "✅ Native library loaded, proceeding with IO redirect setup");
+        
         try {
             Context context = VirtualCore.get().getContext();
             VLog.d(TAG, "Context: " + context);
@@ -258,11 +260,37 @@ public class NativeEngine {
             
             nativeEnableIORedirect(soPath, Build.VERSION.SDK_INT, BuildCompat.getPreviewSDKInt());
             VLog.d(TAG, "✅ IO redirect enabled successfully!");
+            
+            // Verify IO redirect is working by testing a simple path
+            testIORedirect();
+            
         } catch (Throwable e) {
             VLog.e(TAG, "❌ Error enabling IO redirect", e);
             e.printStackTrace();
         }
         VLog.d(TAG, "=== IO redirect initialization complete ===");
+    }
+    
+    /**
+     * Test IO redirect functionality
+     */
+    private static void testIORedirect() {
+        try {
+            VLog.d(TAG, "Testing IO redirect functionality...");
+            
+            // Test a simple path redirection
+            String testPath = "/sdcard/test_file.txt";
+            String redirectedPath = getRedirectedPath(testPath);
+            
+            if (redirectedPath != null && !redirectedPath.equals(testPath)) {
+                VLog.d(TAG, "✅ IO redirect test successful: " + testPath + " -> " + redirectedPath);
+            } else {
+                VLog.w(TAG, "⚠️ IO redirect test inconclusive: " + testPath + " -> " + redirectedPath);
+            }
+            
+        } catch (Exception e) {
+            VLog.w(TAG, "IO redirect test failed", e);
+        }
     }
 
     static void launchEngine() {

@@ -511,24 +511,13 @@ public final class VClientImpl extends IVClient.Stub {
     }
 
     private void setupVirtualStorage(ApplicationInfo info, int userId) {
-        // Always create the private storage directory regardless of virtual storage enablement
-        String privatePath = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName).getAbsolutePath();
-        VLog.d(TAG, "Creating virtual private storage directory: " + privatePath);
+        // Get the virtual UID for this app
+        int vuid = getVUid();
         
-        // Ensure the directory exists and has proper permissions
-        File privateDir = new File(privatePath);
-        if (!privateDir.exists()) {
-            privateDir.mkdirs();
-        }
-        
-        // Set proper permissions for file operations
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                FileUtils.chmod(privatePath, FileUtils.FileMode.MODE_755);
-            }
-        } catch (Exception e) {
-            VLog.w(TAG, "Failed to set permissions for private storage: " + privatePath, e);
-        }
+        // Always create the private storage directory with proper ownership
+        File privateDir = VEnvironment.getVirtualPrivateStorageDir(userId, info.packageName, vuid);
+        String privatePath = privateDir.getAbsolutePath();
+        VLog.d(TAG, "Created virtual private storage directory with ownership: " + privatePath);
         
         NativeEngine.whitelist(privatePath, true);
         
@@ -645,10 +634,16 @@ public final class VClientImpl extends IVClient.Stub {
      */
     private void setupFilePermissions(ApplicationInfo info, int userId) {
         try {
+            // Get the virtual UID for this app
+            int vuid = getVUid();
+            VLog.d(TAG, "Setting up file permissions for package: " + info.packageName + " with vuid: " + vuid);
+            
             // Ensure the app's data directory has proper permissions
             File appDataDir = new File(info.dataDir);
             if (appDataDir.exists()) {
                 FileUtils.chmod(info.dataDir, FileUtils.FileMode.MODE_755);
+                // Change ownership to the virtual app's UID
+                changeFileOwnership(appDataDir, vuid);
             }
             
             // Set up permissions for virtual storage directories
@@ -656,6 +651,8 @@ public final class VClientImpl extends IVClient.Stub {
             File virtualStorageDir = new File(virtualStoragePath);
             if (virtualStorageDir.exists()) {
                 FileUtils.chmod(virtualStoragePath, FileUtils.FileMode.MODE_755);
+                // Change ownership to the virtual app's UID
+                changeFileOwnership(virtualStorageDir, vuid);
             }
             
             // Set up permissions for private storage
@@ -663,11 +660,131 @@ public final class VClientImpl extends IVClient.Stub {
             File privateStorageDir = new File(privateStoragePath);
             if (privateStorageDir.exists()) {
                 FileUtils.chmod(privateStoragePath, FileUtils.FileMode.MODE_755);
+                // Change ownership to the virtual app's UID
+                changeFileOwnership(privateStorageDir, vuid);
             }
             
-            VLog.d(TAG, "File permissions set up for package: " + info.packageName);
+            // Also fix ownership of parent directories in the virtual storage path
+            fixVirtualStorageOwnership(info.packageName, userId, vuid);
+            
+            // Ensure vsdcard directory has proper permissions
+            setupVSDCardPermissions(info.packageName, userId, vuid);
+            
+            VLog.d(TAG, "File permissions and ownership set up for package: " + info.packageName);
         } catch (Exception e) {
             VLog.w(TAG, "Failed to set up file permissions for package: " + info.packageName, e);
+        }
+    }
+    
+    /**
+     * Set up permissions for vsdcard directory access
+     */
+    private void setupVSDCardPermissions(String packageName, int userId, int vuid) {
+        try {
+            // Get the vsdcard base directory
+            File vsdcardBase = VEnvironment.getVirtualStorageBaseDir();
+            if (vsdcardBase != null) {
+                File userVsdcard = new File(vsdcardBase, String.valueOf(userId));
+                if (userVsdcard.exists()) {
+                    // Set permissions for the user's vsdcard directory
+                    FileUtils.chmod(userVsdcard.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                    changeFileOwnership(userVsdcard, vuid);
+                    VLog.d(TAG, "Set vsdcard permissions for user " + userId + " with UID " + vuid);
+                    
+                    // Recursively set permissions for all subdirectories
+                    setDirectoryPermissionsRecursive(userVsdcard, vuid);
+                }
+            }
+            
+            // Also ensure the Android/data and Android/obb directories have proper permissions
+            String androidDataPath = VEnvironment.getVirtualPrivateStorageDir(userId, packageName).getAbsolutePath();
+            File androidDataDir = new File(androidDataPath);
+            if (androidDataDir.exists()) {
+                setDirectoryPermissionsRecursive(androidDataDir, vuid);
+            }
+            
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to set up vsdcard permissions for package: " + packageName, e);
+        }
+    }
+    
+    /**
+     * Recursively set permissions for a directory and all its contents
+     */
+    private void setDirectoryPermissionsRecursive(File directory, int vuid) {
+        try {
+            if (directory.exists() && directory.isDirectory()) {
+                // Set permissions for the directory itself
+                FileUtils.chmod(directory.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                changeFileOwnership(directory, vuid);
+                
+                // Recursively process subdirectories
+                File[] children = directory.listFiles();
+                if (children != null) {
+                    for (File child : children) {
+                        if (child.isDirectory()) {
+                            setDirectoryPermissionsRecursive(child, vuid);
+                        } else {
+                            // Set permissions for files
+                            FileUtils.chmod(child.getAbsolutePath(), FileUtils.FileMode.MODE_755);
+                            changeFileOwnership(child, vuid);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to set permissions recursively for: " + directory.getAbsolutePath(), e);
+        }
+    }
+    
+    /**
+     * Change file ownership to the virtual app's UID
+     */
+    private void changeFileOwnership(File file, int vuid) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // Use Os.chown to change ownership
+                Os.chown(file.getAbsolutePath(), vuid, vuid);
+                VLog.d(TAG, "Changed ownership of " + file.getAbsolutePath() + " to UID: " + vuid);
+            }
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to change ownership of " + file.getAbsolutePath() + " to UID: " + vuid, e);
+        }
+    }
+    
+    /**
+     * Fix ownership of the entire virtual storage directory structure
+     */
+    private void fixVirtualStorageOwnership(String packageName, int userId, int vuid) {
+        try {
+            // Fix ownership of the base virtual storage directory
+            File baseDir = VEnvironment.getVirtualStorageBaseDir();
+            if (baseDir != null && baseDir.exists()) {
+                changeFileOwnership(baseDir, vuid);
+            }
+            
+            // Fix ownership of the user-specific directory
+            File userDir = VEnvironment.getVirtualStorageDir(packageName, userId);
+            if (userDir != null && userDir.exists()) {
+                changeFileOwnership(userDir, vuid);
+            }
+            
+            // Fix ownership of the private storage directory and its parents
+            String privateStoragePath = VEnvironment.getVirtualPrivateStorageDir(userId, packageName).getAbsolutePath();
+            File privateStorageDir = new File(privateStoragePath);
+            
+            // Walk up the directory tree and fix ownership
+            File currentDir = privateStorageDir;
+            while (currentDir != null && !currentDir.equals(Environment.getExternalStorageDirectory())) {
+                if (currentDir.exists()) {
+                    changeFileOwnership(currentDir, vuid);
+                }
+                currentDir = currentDir.getParentFile();
+            }
+            
+            VLog.d(TAG, "Fixed ownership of virtual storage directories for package: " + packageName);
+        } catch (Exception e) {
+            VLog.w(TAG, "Failed to fix virtual storage ownership for package: " + packageName, e);
         }
     }
 
